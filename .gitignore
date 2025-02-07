@@ -65,6 +65,7 @@ full-data.csv
 *.npy
 *.db
 *.index
+dataset*/
 
 # Other dirs
 /local_files_dirs/
