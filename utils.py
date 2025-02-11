@@ -1,5 +1,8 @@
 import os
 import string
+import json
+from groq import Groq
+import prompt_template
 import pandas as pd
 from rapidfuzz import fuzz
 from langchain.schema import Document
@@ -8,6 +11,34 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 load_dotenv()
+client_Groq = Groq()
+
+ 
+def job_title_generator(role):
+    try:
+        system_prompt = prompt_template.system_prompt.format(role=role)
+        # print('➡ system_prompt:', system_prompt)
+
+        chat_completion = client_Groq.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": f""" Role : {role}"""
+                }
+            ],
+            model="llama-3.2-1b-Preview",
+        )
+        result = chat_completion.choices[0].message.content
+        response = json.loads(result)
+
+        return response
+    except Exception as e:
+        print(e)
+
 
 def data_list(data):
     try:
@@ -33,43 +64,6 @@ def keyword_match(user_query, hr_role, hr_id):
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return []
-
-def fuzzy_match(user_query, hr_role, hr_id):
-    try:
-        similar_jobs = []
-
-        queries = user_query.lower().split()
-        punctuation_to_remove = string.punctuation.replace('#', '').replace('+', '').replace('-', '')
-        
-        for job_profile, idx in zip(hr_role, hr_id):
-            job_profile_token = job_profile.lower().split()
-            
-            # Remove unwanted punctuation from job profile tokens
-            filtered_job_profile = [
-                ''.join(char for char in word if char not in punctuation_to_remove)
-                for word in job_profile_token
-            ]
-            filtered_job_profile = [word for word in filtered_job_profile if word]
-
-            matches = [word for word in filtered_job_profile if max(fuzz.partial_ratio(word, query) for query in queries) > 80]
-
-            if matches:
-                job_title_keyword_ratio = max(
-                    (fuzz.ratio(user_query.lower(), match) for match in matches), 
-                    default=0
-                )
-                job_title = ' '.join(matches)
-                job_title_ratio = fuzz.ratio(user_query.lower(), job_title)
-
-                max_similarity = max(job_title_keyword_ratio, job_title_ratio)
-
-                if max_similarity > 80:
-                    similar_jobs.append(idx)
-        return similar_jobs
-
-    except Exception as e:
-        print('➡ error in fuzzy match:', e)
         return []
 
 

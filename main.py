@@ -1,9 +1,9 @@
 import pandas as pd
 from flask import Flask, request, jsonify
 from utils import (
+    job_title_generator,
     data_list,
-    keyword_match, 
-    fuzzy_match, 
+    keyword_match,
     similar_query, 
     sort_results, 
     loading_embeddings)
@@ -25,22 +25,38 @@ def searching():
         vector_db = loading_embeddings(df)
         data = similar_query(user_query, vector_db, 1702)
 
-        hr_role, hr_id = data_list(data)
-
-        # Sort the results based on fuzzy match
-        similar_job_ids = fuzzy_match(user_query.lower(), hr_role, hr_id)
-        data = sort_results(data, similar_job_ids)
-
+        # Extract Role and ID Data
         new_hr_role, new_hr_id = data_list(data)
-        
-        # Sort the results based on keyword match
-        matched_ids = keyword_match(user_query.lower(), new_hr_role, new_hr_id)
-        data = sort_results(data, matched_ids)
 
-        result = data.to_dict(orient='records')
+        # Expand the user query
+        query_expansion = job_title_generator(user_query)
+        query_expansion = list(dict.fromkeys([user_query] + query_expansion))  # Ensure order & remove duplicates
+
+        print('➡ query_expansion:', query_expansion)
+
+        # Dictionary to track unique matches while preserving order
+        sorted_results = []
+        seen_ids = set()
+
+        # Process each job title in query expansion
+        for job in query_expansion:
+            matched_ids = keyword_match(job.lower(), new_hr_role, new_hr_id)
+            
+            for job_id in matched_ids:
+                if job_id not in seen_ids:
+                    sorted_results.append(data[data["HR ID"] == job_id])  # Select matching row
+                    seen_ids.add(job_id)
+
+        # Concatenate results into a final DataFrame
+        final_data = pd.concat(sorted_results, ignore_index=True)
+
+        # Convert to dictionary format
+        result = final_data.to_dict(orient='records')
+
 
         return jsonify({"results": result}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=True)
