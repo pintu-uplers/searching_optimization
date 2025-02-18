@@ -1,6 +1,7 @@
 import os
 import string
 import json
+import custom_logs
 from groq import Groq
 import prompt_template
 import pandas as pd
@@ -15,6 +16,7 @@ load_dotenv()
 
 def keyword_match(user_query, data):
     try:
+        custom_logs.log_action("keyword_match", f"Adding user query as keyword: {user_query}.")
         hr_role = list(data['Job Title'])
         hr_id = list(data['HR ID'])
         matched_ids = []
@@ -27,9 +29,12 @@ def keyword_match(user_query, data):
             if extracted_keywords:
                 matched_ids.append(idx)
         
+        custom_logs.log_action("keyword_match", f"Matched IDs: {matched_ids}.")
+        
         return matched_ids
 
     except Exception as e:
+        custom_logs.log_action("keyword_match", f"An error occurred: {e}", log_level="error")
         print(f"An error occurred: {e}")
         return []
 
@@ -41,13 +46,15 @@ def loading_embeddings(faiss_index_file="faiss_index", save_folder="faiss_indice
         faiss_index_path = os.path.join(save_folder, faiss_index_file)
 
         if os.path.exists(faiss_index_path):
-            print(f"FAISS index loading from {faiss_index_path}.")
+            # print(f"FAISS index loading from {faiss_index_path}.")
+            custom_logs.log_action("loading_embeddings", f"FAISS index loading from {faiss_index_path}.")
 
             vector_db = FAISS.load_local(faiss_index_path, OpenAIEmbeddings(model="text-embedding-3-large"), allow_dangerous_deserialization=True)
 
             return vector_db
         
-        print(f"Creating FAISS index {faiss_index_path}.")
+        # print(f"Creating FAISS index {faiss_index_path}.")
+        custom_logs.log_action("loading_embeddings", f"Creating FAISS index {faiss_index_path}.")
         df = pd.read_excel(r'dataset\Resume_HR.xlsx', sheet_name='hr_roles')
         hr_role = df["Role"].fillna("").tolist()
         hr_id = df["ID"].fillna("").tolist()
@@ -65,19 +72,24 @@ def loading_embeddings(faiss_index_file="faiss_index", save_folder="faiss_indice
         # Save the FAISS index to the specified folder
         vector_db.save_local(faiss_index_path)
 
-        print(f"FAISS index saved at {faiss_index_path}.")
+        # print(f"FAISS index saved at {faiss_index_path}.")
+        custom_logs.log_action("loading_embeddings", f"FAISS index saved at {faiss_index_path}.")
         
         return vector_db
     except Exception as e:
-        print("Error in loading embeddings", e)
+        custom_logs.log_action("loading_embeddings", f"Error in loading embeddings: {e}", log_level="error")
+        # print("Error in loading embeddings", e)
 
 
 def similar_query(user_query, job_category, vector_db, k):
     try:
+        custom_logs.log_action("similar_query", f"User query: {user_query}, Job category: {job_category}, K: {k}.")
+        custom_logs.log_action("similar_query", f"Performing similarity search.")
         results = vector_db.similarity_search(user_query, k=k, filter={"Category": job_category})
         # print('➡ results:', results)
 
         if not results:
+            custom_logs.log_action("similar_query", f"No results found.")
             return pd.DataFrame(columns=["HR ID", "Category", "Job Title"])
 
         data = [
@@ -90,10 +102,12 @@ def similar_query(user_query, job_category, vector_db, k):
         ]
 
         df_results = pd.DataFrame(data)
+        custom_logs.log_action("similar_query", f"Results found: {len(df_results)}")
         
         return df_results
     except Exception as e:
-        print("Error in similar query", e)
+        # print("Error in similar query", e)
+        custom_logs.log_action("similar_query", f"Error in similar query: {e}", log_level="error")
 
 
 def sort_results(user_query, data):
@@ -104,8 +118,10 @@ def sort_results(user_query, data):
         data['original_index'] = data.index
         data = data.sort_values(by=['priority_order', 'original_index']).drop(columns=['priority_order', 'original_index']).reset_index(drop=True)
 
+        custom_logs.log_action("sort_results", f"Results sorted.")
         return data
     except Exception as e:
+        custom_logs.log_action("sort_results", f"Error in sorting results: {e}", log_level="error")
         print(e)
 
 
