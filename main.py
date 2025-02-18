@@ -1,14 +1,11 @@
+import warnings
+warnings.filterwarnings("ignore")
 import pandas as pd
 from flask import Flask, request, jsonify
 from utils import (
-    job_title_generator,
-    data_list,
-    keyword_match,
     similar_query, 
-    sort_results, 
-    loading_embeddings)
-
-df = pd.read_excel(r'dataset\updated_excel_file.xlsx')
+    loading_embeddings,
+    sort_results)
 
 app = Flask(__name__)
 
@@ -16,42 +13,28 @@ app = Flask(__name__)
 def searching():
     try:
         request_data = request.get_json()
+
+        if not request_data:
+            return jsonify({"error": "Request data is empty.", "expected_format": {"query": "", "category": ""}}), 400
+
         user_query = request_data.get('query', '')
+        job_category = request_data.get('category', '')
         
         if not user_query:
-            return jsonify({"error": "Query parameter is required."}), 400
+            return jsonify({"error": f"query parameter is required."}), 400
+        
+        if not job_category:
+            return jsonify({"error": f"category parameter is required."}), 400
+
+        vector_db = loading_embeddings()
 
         # Find similar queries using vector database
-        vector_db = loading_embeddings(df)
-        data = similar_query(user_query, vector_db, 1702)
+        data = similar_query(user_query, job_category, vector_db, 5)
 
-        # Extract Role and ID Data
-        new_hr_role, new_hr_id = data_list(data)
-
-        # Expand the user query
-        query_expansion = job_title_generator(user_query)
-        query_expansion = list(dict.fromkeys([user_query] + query_expansion))  # Ensure order & remove duplicates
-
-        print('➡ query_expansion:', query_expansion)
-
-        # Dictionary to track unique matches while preserving order
-        sorted_results = []
-        seen_ids = set()
-
-        # Process each job title in query expansion
-        for job in query_expansion:
-            matched_ids = keyword_match(job.lower(), new_hr_role, new_hr_id)
-            
-            for job_id in matched_ids:
-                if job_id not in seen_ids:
-                    sorted_results.append(data[data["HR ID"] == job_id])  # Select matching row
-                    seen_ids.add(job_id)
-
-        # Concatenate results into a final DataFrame
-        final_data = pd.concat(sorted_results, ignore_index=True)
-
+        data = sort_results(user_query, data)
+    
         # Convert to dictionary format
-        result = final_data.to_dict(orient='records')
+        result = data.to_dict(orient='records')
 
 
         return jsonify({"results": result}), 200

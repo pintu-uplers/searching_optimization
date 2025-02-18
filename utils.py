@@ -11,45 +11,12 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 load_dotenv()
-client_Groq = Groq()
-
- 
-def job_title_generator(role):
-    try:
-        system_prompt = prompt_template.system_prompt.format(role=role)
-        # print('➡ system_prompt:', system_prompt)
-
-        chat_completion = client_Groq.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": f""" Role : {role}"""
-                }
-            ],
-            model="llama-3.2-1b-Preview",
-        )
-        result = chat_completion.choices[0].message.content
-        response = json.loads(result)
-
-        return response
-    except Exception as e:
-        print(e)
 
 
-def data_list(data):
+def keyword_match(user_query, data):
     try:
         hr_role = list(data['Job Title'])
         hr_id = list(data['HR ID'])
-        return hr_role, hr_id
-    except Exception as e:
-        print(e)
-
-def keyword_match(user_query, hr_role, hr_id):
-    try:
         matched_ids = []
         keywordprocessor = KeywordProcessor(case_sensitive=False)
         keywordprocessor.add_keyword(user_query)  # Add the user query as a keyword
@@ -67,7 +34,7 @@ def keyword_match(user_query, hr_role, hr_id):
         return []
 
 
-def loading_embeddings(df, faiss_index_file="faiss_index", save_folder="faiss_indices_db"):
+def loading_embeddings(faiss_index_file="faiss_index", save_folder="faiss_indices_db"):
     try:
         # Ensure the save folder exists
         os.makedirs(save_folder, exist_ok=True)
@@ -80,12 +47,15 @@ def loading_embeddings(df, faiss_index_file="faiss_index", save_folder="faiss_in
 
             return vector_db
         
-        hr_role = df["hr_role"].fillna("").tolist()
-        hr_id = df["HR_Number"].fillna("").tolist()
+        print(f"Creating FAISS index {faiss_index_path}.")
+        df = pd.read_excel(r'dataset\Resume_HR.xlsx', sheet_name='hr_roles')
+        hr_role = df["Role"].fillna("").tolist()
+        hr_id = df["ID"].fillna("").tolist()
+        category = df["Category"].fillna("").tolist()
 
         documents = [
-            Document(page_content=role, metadata={"hr_id": idx})
-            for role, idx in zip(hr_role, hr_id)
+            Document(page_content=role, metadata={"ID": idx, "Category": cat})
+            for role, idx, cat in zip(hr_role, hr_id, category)
         ]
         # Generate embeddings and create FAISS vector store
         vector_db = FAISS.from_documents(
@@ -95,7 +65,6 @@ def loading_embeddings(df, faiss_index_file="faiss_index", save_folder="faiss_in
         # Save the FAISS index to the specified folder
         vector_db.save_local(faiss_index_path)
 
-        # vector_db.similarity_search
         print(f"FAISS index saved at {faiss_index_path}.")
         
         return vector_db
@@ -103,13 +72,18 @@ def loading_embeddings(df, faiss_index_file="faiss_index", save_folder="faiss_in
         print("Error in loading embeddings", e)
 
 
-def similar_query(user_query, vector_db, k):
+def similar_query(user_query, job_category, vector_db, k):
     try:
-        results = vector_db.similarity_search(user_query, k=k)
+        results = vector_db.similarity_search(user_query, k=k, filter={"Category": job_category})
+        # print('➡ results:', results)
+
+        if not results:
+            return pd.DataFrame(columns=["HR ID", "Category", "Job Title"])
 
         data = [
             {
-                "HR ID": str(doc.metadata.get("hr_id")),
+                "HR ID": str(doc.metadata.get("ID", "Unknown")),
+                "Category": str(doc.metadata.get("Category", "Unknown")),
                 "Job Title": str(doc.page_content)
             }
             for doc in results
@@ -122,9 +96,10 @@ def similar_query(user_query, vector_db, k):
         print("Error in similar query", e)
 
 
-def sort_results(data, matched_ids):
+def sort_results(user_query, data):
     """ Sort the results based on match """
     try:
+        matched_ids = keyword_match(user_query, data)
         data['priority_order'] = data['HR ID'].apply(lambda x: matched_ids.index(x) if x in matched_ids else float('inf'))
         data['original_index'] = data.index
         data = data.sort_values(by=['priority_order', 'original_index']).drop(columns=['priority_order', 'original_index']).reset_index(drop=True)
