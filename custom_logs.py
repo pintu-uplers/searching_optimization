@@ -1,20 +1,33 @@
 import logging
 
-# Set up logging configuration
-logging.basicConfig(level=logging.INFO, filename='actions.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s')
+# Create a custom logger for your application
+logger = logging.getLogger("custom_logger")
+logger.setLevel(logging.INFO)
 
+# Create a file handler to write logs to a file
+file_handler = logging.FileHandler('actions.log', mode='a')
+file_handler.setLevel(logging.INFO)
+
+# Define log message format
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# Add the handler to the logger
+logger.addHandler(file_handler)
+
+# Function to log actions
 def log_action(function_name, message, log_level="info"):
     log_message = f"Function: {function_name} - {message}"
-    
+
     if log_level == "debug":
-        logging.debug(log_message)
+        logger.debug(log_message)
     elif log_level == "info":
-        logging.info(log_message)
+        logger.info(log_message)
     elif log_level == "warning":
-        logging.warning(log_message)
+        logger.warning(log_message)
     elif log_level == "error":
-        logging.error(log_message)
+        logger.error(log_message)
     elif log_level == "critical":
-        logging.critical(log_message)
+        logger.critical(log_message)
     else:
-        logging.info(log_message)  # Default to INFO if an invalid level is provided
+        logger.info(log_message)  # Default to INFO if an invalid level is provided

@@ -1,11 +1,6 @@
 import os
-import string
-import json
 import custom_logs
-from groq import Groq
-import prompt_template
 import pandas as pd
-from rapidfuzz import fuzz
 from langchain.schema import Document
 from flashtext import KeywordProcessor
 from langchain_openai import OpenAIEmbeddings
@@ -41,6 +36,7 @@ def keyword_match(user_query, data):
 
 def loading_embeddings(faiss_index_file="faiss_index", save_folder="faiss_indices_db"):
     try:
+        # custom_logs.log_action("loading_embeddings", f"=====================New Request=====================")
         # Ensure the save folder exists
         os.makedirs(save_folder, exist_ok=True)
         faiss_index_path = os.path.join(save_folder, faiss_index_file)
@@ -83,8 +79,7 @@ def loading_embeddings(faiss_index_file="faiss_index", save_folder="faiss_indice
 
 def similar_query(user_query, job_category, vector_db, k):
     try:
-        custom_logs.log_action("similar_query", f"User query: {user_query}, Job category: {job_category}, K: {k}.")
-        custom_logs.log_action("similar_query", f"Performing similarity search.")
+        custom_logs.log_action("similar_query", f"Performing similarity search for User query: {user_query}, Job category: {job_category} and top K: {k}.")
         results = vector_db.similarity_search(user_query, k=k, filter={"Category": job_category})
         # print('➡ results:', results)
 
@@ -118,7 +113,7 @@ def sort_results(user_query, data):
         data['original_index'] = data.index
         data = data.sort_values(by=['priority_order', 'original_index']).drop(columns=['priority_order', 'original_index']).reset_index(drop=True)
 
-        custom_logs.log_action("sort_results", f"Results sorted.")
+        custom_logs.log_action("sort_results", f"Results sorted: {len(data)}")
         return data
     except Exception as e:
         custom_logs.log_action("sort_results", f"Error in sorting results: {e}", log_level="error")

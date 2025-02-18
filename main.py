@@ -1,7 +1,6 @@
 import warnings
-warnings.filterwarnings("ignore")
 import custom_logs
-import pandas as pd
+warnings.filterwarnings("ignore")
 from flask import Flask, request, jsonify
 from utils import (
     similar_query, 
@@ -17,7 +16,7 @@ def searching():
         request_data = request.get_json()
 
         if not request_data:
-            custom_logs.log_action("searching", f"Request data is empty.")
+            # custom_logs.log_action("searching", f"Request data is empty.")
             return jsonify({"error": "Request data is empty.", "expected_format": {"query": "", "category": ""}}), 400
 
         custom_logs.log_action("searching", f"Request data: {request_data}.")
@@ -33,6 +32,7 @@ def searching():
             return jsonify({"error": f"category parameter is required."}), 400
 
         vector_db = loading_embeddings()
+        print('➡ vector_db:', vector_db)
 
         # Find similar queries using vector database
         data = similar_query(user_query, job_category, vector_db, 5)
@@ -40,13 +40,13 @@ def searching():
         data = sort_results(user_query, data)
     
         # Convert to dictionary format
-        custom_logs.log_action("searching", f"Results found: {len(data)}")
+        # custom_logs.log_action("searching", f"Results found: {len(data)}")
         result = data.to_dict(orient='records')
 
 
         return jsonify({"results": result}), 200
     except Exception as e:
-        # custom_logs.log_action("searching", f"Error in searching: {e}", "error")
+        custom_logs.log_action("searching", f"Error in searching: {e}", "error")
         return jsonify({"error": str(e)}), 500
     
 if __name__ == '__main__':
