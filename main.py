@@ -1,4 +1,5 @@
 import warnings
+import time
 import custom_logs
 warnings.filterwarnings("ignore")
 from flask import Flask, request, jsonify
@@ -12,6 +13,7 @@ app = Flask(__name__)
 @app.route('/search', methods=['POST'])
 def searching():
     try:
+        start_time = time.time()
         custom_logs.log_action("searching", f"============================New Request============================")
         request_data = request.get_json()
 
@@ -32,7 +34,6 @@ def searching():
             return jsonify({"error": f"category parameter is required."}), 400
 
         vector_db = loading_embeddings()
-        print('➡ vector_db:', vector_db)
 
         # Find similar queries using vector database
         data = similar_query(user_query, job_category, vector_db, 5)
@@ -43,6 +44,9 @@ def searching():
         # custom_logs.log_action("searching", f"Results found: {len(data)}")
         result = data.to_dict(orient='records')
 
+        end_time = time.time()
+        custom_logs.log_action("searching", f"Time taken: {round(end_time - start_time, 2)} seconds.")
+        custom_logs.log_action("searching", f"============================End Request============================")
 
         return jsonify({"results": result}), 200
     except Exception as e:

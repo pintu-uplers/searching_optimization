@@ -11,7 +11,6 @@ load_dotenv()
 
 def keyword_match(user_query, data):
     try:
-        custom_logs.log_action("keyword_match", f"Adding user query as keyword: {user_query}.")
         hr_role = list(data['Job Title'])
         hr_id = list(data['HR ID'])
         matched_ids = []
