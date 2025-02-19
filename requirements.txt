@@ -20,3 +20,4 @@ sentencepiece
 torchvision
 watchfiles
 websockets
+beautifulsoup4
