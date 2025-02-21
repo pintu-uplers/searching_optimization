@@ -1,6 +1,8 @@
 import warnings
 import time
+from traceback import format_exc
 import custom_logs
+from schema import RequestSchema
 warnings.filterwarnings("ignore")
 from flask import Flask, request, jsonify
 from utils import (
@@ -19,26 +21,18 @@ def searching():
 
         if not request_data:
             # custom_logs.log_action("searching", f"Request data is empty.")
-            return jsonify({"error": "Request data is empty.", "expected_format": {"query": "", "category": ""}}), 400
+            return jsonify({"error": "Request data is empty.", "expected_format": {"query": "", "role": ""}}), 400
+        
+        validated_data = RequestSchema(**request_data)
 
         custom_logs.log_action("searching", f"Request data: {request_data}.")
-        user_query = request_data.get('query', '')
-        job_category = request_data.get('category', '')
-        
-        if not user_query:
-            custom_logs.log_action("searching", f"query parameter is required.")
-            return jsonify({"error": f"query parameter is required."}), 400
-        
-        if not job_category:
-            custom_logs.log_action("searching", f"category parameter is required.")
-            return jsonify({"error": f"category parameter is required."}), 400
 
         vector_db = loading_embeddings()
 
         # Find similar queries using vector database
-        data = similar_query(user_query, job_category, vector_db, 5)
+        data = similar_query(validated_data, vector_db, 100)
 
-        data = sort_results(user_query, data)
+        data = sort_results(validated_data.role, data)
     
         # Convert to dictionary format
         # custom_logs.log_action("searching", f"Results found: {len(data)}")
@@ -50,7 +44,7 @@ def searching():
 
         return jsonify({"results": result}), 200
     except Exception as e:
-        custom_logs.log_action("searching", f"Error in searching: {e}", "error")
+        custom_logs.log_action("searching", f"Error in searching: {format_exc()}")
         return jsonify({"error": str(e)}), 500
     
 if __name__ == '__main__':
