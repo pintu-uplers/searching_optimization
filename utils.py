@@ -211,7 +211,7 @@ def getting_results(validated_data, vector_db, k):
 
             custom_logs.log_action("getting_results", f"Results found from Exp filter: {len(results_exp)}")
             
-            results_role = [doc for doc in results_vector if match_criteria(doc.metadata, criteria)]
+            results_role = [doc for doc in results_exp if match_criteria(doc.metadata, criteria)]
             df_results = df_creation(results_role, "role_output")
             custom_logs.log_action("getting_results", f"Results found from Role: {len(results_role)}")
 
