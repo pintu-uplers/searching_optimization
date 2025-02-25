@@ -156,7 +156,7 @@ def sort_results(user_query, data):
     except Exception as e:
         custom_logs.log_action("sort_results", f"Error in sorting results: {e}", log_level="error")
 
-def df_creation(results, file_name, output_dir="output"):
+def df_creation(results, file_name, output_dir=r"local_files_dirs\output"):
     try:
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f"{file_name}.xlsx")
