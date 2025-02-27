@@ -7,8 +7,7 @@ warnings.filterwarnings("ignore")
 from flask import Flask, request, jsonify
 from utils import (
     similar_query, 
-    loading_embeddings,
-    sort_results)
+    loading_embeddings)
 
 app = Flask(__name__)
 
@@ -32,10 +31,10 @@ def searching():
         # Find similar queries using vector database
         data = similar_query(validated_data, vector_db, 100)
 
-        data = sort_results(validated_data.role, data)
+        data = data[["Role", "Experience", "Current", "Cosine_distance", "Final_Score"]]
     
         # Convert to dictionary format
-        # custom_logs.log_action("searching", f"Results found: {len(data)}")
+        custom_logs.log_action("searching", f"Result displayed")
         result = data.to_dict(orient='records')
 
         end_time = time.time()
