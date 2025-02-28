@@ -26,20 +26,18 @@ def loading_embeddings():
         # print(f"Creating FAISS index {faiss_index_path}.")
         custom_logs.log_action("loading_embeddings", f"Creating Chroma index.")
 
-        df = pd.read_excel(r'dataset\updated_resume.xlsx')
+        df = pd.read_excel(r'dataset\talent_resume.xlsx')
 
-        role_description = df["job_description"].fillna("").tolist()
+        role_description = df["resume_content"].fillna("").tolist()
         talent_id = df["talent_id"].fillna("").tolist()
-        role_title = df["title"].fillna("").tolist()
-        experience = df["experience"].fillna("").tolist()
-        company = df["company_name"].fillna("").tolist()
+        roles = df["role"].fillna("").tolist()
         current_job = df["is_current"].fillna("").tolist()
         start_date = df["start_date"].fillna("").tolist()
         end_date = df["end_date"].fillna("").tolist()
 
         documents = [
-            Document(page_content=desc, metadata={"ID": idx, "Role": title, "Company":comp, "Experience": round(exp/12), "Current": current, "Start": start, "End": end})
-            for desc, idx, title, comp, exp, current, start, end in zip(role_description, talent_id, role_title, company, experience, current_job, start_date, end_date)
+            Document(page_content=desc, metadata={"ID": idx, "Current": current, "Role":role, "Start": start, "End": end})
+            for desc, idx, current, role, start, end in zip(role_description, talent_id, current_job, roles, start_date, end_date)
         ]
         
         vector_db = Chroma.from_documents(
@@ -62,7 +60,6 @@ def df_creation(results, file_name, output_dir="output"):
                 "ID": str(doc.metadata.get("ID", "Unknown")),
                 "Role": str(doc.metadata.get("Role", "Unknown")),
                 "Cosine_distance": str(1 - score/2),
-                "Experience": str(doc.metadata.get("Experience", "Unknown")),
                 "Start": str(doc.metadata.get("Start", "Unknown")),
                 "End": str(doc.metadata.get("End", "Unknown")),
                 "Current": str(doc.metadata.get("Current", "Unknown")),
@@ -114,6 +111,8 @@ def getting_results(validated_data, vector_db, k):
             custom_logs.log_action("getting_results", f"Searching for similar queries.")
 
             results_vector = vector_db.similarity_search_with_score(user_query, k=k)
+            # print('➡ results_vector:', results_vector)
+            
             df_results = df_creation(results_vector, "vector_output")
 
         weights = []
