@@ -112,7 +112,10 @@ def getting_results(validated_data, vector_db, k):
         
         if user_query:
             custom_logs.log_action("getting_results", f"Searching for similar queries.")
-
+            
+            # total_records = vector_db._collection.count()
+            # print('➡ total_records:', total_records)
+            # vector_db._collection.set_hnsw_config(ef=200)
             results_vector = vector_db.similarity_search_with_score(user_query, k=k)
             df_results = df_creation(results_vector, "vector_output")
 
