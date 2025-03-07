@@ -66,6 +66,7 @@ full-data.csv
 *.db
 *.index
 dataset*/
+output/
 
 # Other dirs
 /local_files_dirs/
